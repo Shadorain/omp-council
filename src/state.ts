@@ -1,9 +1,10 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
-import { agentDir, councilRunsPath } from "./paths.ts";
+import { retainLimit } from "./config.ts";
+import { agentDir, runDumpsPath } from "./paths.ts";
 import { runtimeAgentName } from "./runtime-agents.ts";
-import { MAX_RUN_DUMPS, ROLE_LENSES, STATE_ENTRY, isTerminalPhase } from "./types.ts";
+import { DEFAULT_RETAIN_RUNS, ROLE_LENSES, STATE_ENTRY, isTerminalPhase } from "./types.ts";
 import type {
 	ActiveRun,
 	ArenaProfile,
@@ -287,8 +288,8 @@ function dropLegacyRunDir(): void {
 	}
 }
 
-export function readRunDumps(): RunDump[] {
-	const path = councilRunsPath();
+export function readRunDumps(kind: "council" | "arena"): RunDump[] {
+	const path = runDumpsPath(kind);
 	if (!existsSync(path)) return [];
 	try {
 		const rows: RunDump[] = [];
@@ -310,7 +311,12 @@ export function readRunDumps(): RunDump[] {
 export function persistRunDump(run: ActiveRun): string | undefined {
 	try {
 		dropLegacyRunDir();
-		const path = councilRunsPath();
+		const path = runDumpsPath(run.kind);
+		const cap = retainLimit(run.kind);
+		if (cap <= 0) {
+			writeFileSync(path, "");
+			return path;
+		}
 		const members: Record<string, unknown> = {};
 		for (const [key, member] of Object.entries(run.members)) {
 			members[key] = {
@@ -330,7 +336,7 @@ export function persistRunDump(run: ActiveRun): string | undefined {
 			final: run.final ?? null,
 			statusMessage: run.statusMessage,
 		};
-		const rows = [body, ...readRunDumps().filter((row) => row.id !== run.id)].slice(0, MAX_RUN_DUMPS);
+		const rows = [body, ...readRunDumps(run.kind).filter((row) => row.id !== run.id)].slice(0, cap);
 		writeFileSync(path, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`);
 		return path;
 	} catch {
@@ -343,7 +349,7 @@ export function archiveRun(pi: ExtensionAPI, state: RuntimeState, run: ActiveRun
 	run.archived = true;
 	persistRunDump(run);
 	const archived = snapshotRun(run);
-	state.history = [archived, ...state.history.filter((item) => item.id !== archived.id)].slice(0, MAX_RUN_DUMPS);
+	state.history = [archived, ...state.history.filter((item) => item.id !== archived.id)].slice(0, DEFAULT_RETAIN_RUNS);
 	pi.appendEntry(STATE_ENTRY, archived);
 }
 
@@ -376,16 +382,18 @@ function compactDump(row: RunDump): unknown {
 	return walk(row);
 }
 
-export function historyText(id?: string): string {
-	const path = councilRunsPath();
-	const rows = readRunDumps();
+export function historyText(kind: "council" | "arena", id?: string): string {
+	const path = runDumpsPath(kind);
+	const cap = retainLimit(kind);
+	const rows = readRunDumps(kind);
+	const label = kind === "arena" ? "Arena" : "Council";
 	if (id) {
 		const row = rows.find((item) => item.id.toLowerCase() === id.toLowerCase());
-		if (!row) return `No retained run ${id}. Last ${MAX_RUN_DUMPS} live in ${path}`;
+		if (!row) return `No retained ${label} run ${id}. Last ${cap} live in ${path}`;
 		return JSON.stringify(compactDump(row), null, 2).slice(0, 6000);
 	}
-	if (rows.length === 0) return `No retained Council/Arena runs.\nLast ${MAX_RUN_DUMPS} live in ${path}`;
-	return `${rows.slice(0, 10).map(summarizeDump).join("\n")}\n\n${path}  (cap ${MAX_RUN_DUMPS})`;
+	if (rows.length === 0) return `No retained ${label} runs.\nLast ${cap} live in ${path}`;
+	return `${rows.slice(0, 10).map(summarizeDump).join("\n")}\n\n${path}  (cap ${cap})`;
 }
 
 export function markMembers(run: ActiveRun, from: MemberStatus[], to: MemberStatus): void {

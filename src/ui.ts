@@ -154,6 +154,8 @@ export async function setupRegistry(ctx: ExtensionCommandContext): Promise<Counc
 		presets,
 		...(judgeModel ? { judgeModel } : {}),
 		...(existing?.shimmer === false ? { shimmer: false } : {}),
+		...(existing?.retainCouncil !== undefined ? { retainCouncil: existing.retainCouncil } : {}),
+		...(existing?.retainArena !== undefined ? { retainArena: existing.retainArena } : {}),
 	};
 	writeConfig(config);
 	ctx.ui.notify(`Saved ${participants.length} Council participant(s).`, "info");

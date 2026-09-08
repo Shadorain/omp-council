@@ -136,7 +136,9 @@ Arena `-t` also opens a blind-judge picker unless `--judge` is supplied.
   "presets": {
     "default": ["primary-reasoner"],
     "all": ["primary-reasoner"]
-  }
+  },
+  "retainCouncil": 20,
+  "retainArena": 20
 }
 ```
 
@@ -243,14 +245,14 @@ cargo test --workspace
 
 ## Run dumps
 
-One file, capped. `~/.omp/agent/council-runs.jsonl` keeps the last 20 finished/failed/cancelled runs (newest first). Older lines drop. `--tmp` still records output. Arena diffs are stored; `/council history C14` prints that run with `diff` stripped so the notify stays readable.
+Two capped files, newest first:
 
-```text
-/council history
-/council history C14
-```
+- `~/.omp/agent/council-runs.jsonl`
+- `~/.omp/agent/arena-runs.jsonl`
 
-This is not `council.json`. Session widgets still restore from the session log; the jsonl is the cross-session record.
+Caps live in `council.json` as `retainCouncil` and `retainArena` (default 20, max 200, `0` writes an empty file). `/council setup` keeps those fields. `/council history` and `/arena history` read their own file. `/council history C14` or `/arena history A3` prints one run (`diff` stripped).
+
+`--tmp` still records output. This is not the participant registry.
 
 ## Autocomplete
 

@@ -19,5 +19,7 @@
   "presets": {
     "default": ["primary-reasoner", "local-worker"],
     "all": ["primary-reasoner", "local-worker"]
-  }
+  },
+  "retainCouncil": 20,
+  "retainArena": 20
 }

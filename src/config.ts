@@ -1,7 +1,19 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { councilConfigPath } from "./paths.ts";
-import type { CouncilConfig, ParticipantConfig } from "./types.ts";
+import { DEFAULT_RETAIN_RUNS, MAX_RETAIN_RUNS } from "./types.ts";
+import type { CouncilConfig, ParticipantConfig, RunKind } from "./types.ts";
+
+export function clampRetain(value: unknown, fallback = DEFAULT_RETAIN_RUNS): number {
+	const n = typeof value === "number" ? value : Number(value);
+	if (!Number.isFinite(n)) return fallback;
+	return Math.max(0, Math.min(MAX_RETAIN_RUNS, Math.floor(n)));
+}
+
+export function retainLimit(kind: RunKind, config?: CouncilConfig): number {
+	const resolved = config ?? readConfig();
+	return kind === "arena" ? clampRetain(resolved?.retainArena) : clampRetain(resolved?.retainCouncil);
+}
 
 export function readConfig(): CouncilConfig | undefined {
 	const path = councilConfigPath();
@@ -19,6 +31,8 @@ export function readConfig(): CouncilConfig | undefined {
 		presets: parsed.presets && typeof parsed.presets === "object" ? parsed.presets : undefined,
 		judgeModel: typeof parsed.judgeModel === "string" ? parsed.judgeModel : undefined,
 		shimmer: parsed.shimmer === false ? false : parsed.shimmer === true ? true : undefined,
+		retainCouncil: typeof parsed.retainCouncil === "number" ? clampRetain(parsed.retainCouncil) : undefined,
+		retainArena: typeof parsed.retainArena === "number" ? clampRetain(parsed.retainArena) : undefined,
 	};
 }
 
@@ -36,6 +50,8 @@ export function configSummary(config: CouncilConfig | undefined): string {
 		...config.participants.map((p) => `  ${p.id}: ${p.label} -> ${p.model}`),
 		`Arena judge: ${config.judgeModel ?? "current session model (dynamic)"}`,
 		`Header wave: ${config.shimmer === false ? "off" : "on"} (OMP_COUNCIL_SHIMMER=0 to force off)`,
+		`Retain council: ${retainLimit("council", config)} in council-runs.jsonl`,
+		`Retain arena: ${retainLimit("arena", config)} in arena-runs.jsonl`,
 	];
 	if (config.presets && Object.keys(config.presets).length > 0) {
 		lines.push("Presets:");

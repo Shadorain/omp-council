@@ -579,6 +579,7 @@ async function handleSharedManagement(
 	pi: ExtensionAPI,
 	state: RuntimeState,
 	ctx: ExtensionCommandContext,
+	kind: "council" | "arena",
 ): Promise<boolean> {
 	if (raw === "help" || raw === "--help" || raw === "-h") {
 		ctx.ui.notify(usageText(), "info");
@@ -607,7 +608,7 @@ async function handleSharedManagement(
 	}
 	if (raw === "history" || raw.startsWith("history ")) {
 		const id = raw.slice("history".length).trim();
-		ctx.ui.notify(historyText(id || undefined), "info");
+		ctx.ui.notify(historyText(kind, id || undefined), "info");
 		return true;
 	}
 	if (raw === "clear") {
@@ -694,7 +695,7 @@ export default function councilExtension(pi: ExtensionAPI): void {
 			const state = stateFor(ctx);
 			const raw = args.trim();
 			try {
-				if (await handleSharedManagement(raw, pi, state, ctx)) return;
+				if (await handleSharedManagement(raw, pi, state, ctx, "council")) return;
 				const syntax = parseCouncilSyntax(raw);
 				const request = await buildCouncilRequest(ctx, syntax, raw.length === 0);
 				if (!request) return;
@@ -717,7 +718,7 @@ export default function councilExtension(pi: ExtensionAPI): void {
 					await applyArenaWinner(pi, state, ctx);
 					return;
 				}
-				if (await handleSharedManagement(raw, pi, state, ctx)) return;
+				if (await handleSharedManagement(raw, pi, state, ctx, "arena")) return;
 				const syntax = parseArenaSyntax(raw);
 				const request = await buildArenaRequest(ctx, syntax, raw.length === 0);
 				if (!request) return;
