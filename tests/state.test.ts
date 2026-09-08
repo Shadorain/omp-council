@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { persistRunDump, applyOrchestrationResult, applyProgress, assignLenses, createRuntimeState, hydrateUsageFromEval, makeRun, snapshotRun } from "../src/state.ts";
+import { persistRunDump, readRunDumps, historyText, applyOrchestrationResult, applyProgress, assignLenses, createRuntimeState, hydrateUsageFromEval, makeRun, snapshotRun } from "../src/state.ts";
 import { isTerminalPhase } from "../src/types.ts";
 import { formatCost, formatDuration, kickoffCardLines, visWidth, widgetLines, widgetShimmerEnabled } from "../src/widget.ts";
 
@@ -258,29 +258,31 @@ describe("clear/cancel gates", () => {
 		expect(run.judgeAgent).toBeTruthy();
 	});
 
-	test("persistRunDump writes full output next to council-runs", async () => {
+	test("persistRunDump keeps a capped jsonl ring", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "council-runs-"));
 		dirs.push(dir);
 		process.env.OMP_AGENT_DIR = dir;
 		const state = createRuntimeState("s");
-		const run = makeRun(
-			state,
-			"council",
-			"Testing",
-			[
-				{ label: "A", model: "p/a", provider: "p", temporary: true },
-				{ label: "B", model: "p/b", provider: "p", temporary: true },
-			],
-			{ temporary: true, mode: "quick", rolePreset: "general" },
-		);
+		const selected = [
+			{ label: "A", model: "p/a", provider: "p", temporary: true },
+			{ label: "B", model: "p/b", provider: "p", temporary: true },
+		];
+		const run = makeRun(state, "council", "Testing", selected, { temporary: true, mode: "quick", rolePreset: "general" });
 		run.final = { kind: "council", runId: run.id, initial: [{ member: "seat1", data: { recommendation: "ok" } }] };
 		run.phase = "done";
 		const path = persistRunDump(run);
-		expect(path).toBe(join(dir, "council-runs", `${run.id}.json`));
-		expect(existsSync(path!)).toBe(true);
-		const dumped = JSON.parse(readFileSync(path!, "utf8"));
+		expect(path).toBe(join(dir, "council-runs.jsonl"));
+		expect(existsSync(join(dir, "council-runs"))).toBe(false);
+		const dumped = JSON.parse(readFileSync(path!, "utf8").trim());
 		expect(dumped.question).toBe("Testing");
 		expect(dumped.final.initial[0].data.recommendation).toBe("ok");
-		expect(dumped.members.seat1.label).toBe("A");
+		expect(historyText(run.id)).toContain("Testing");
+		for (let i = 0; i < 21; i++) {
+			const extra = makeRun(state, "council", `q${i}`, selected, { temporary: true, mode: "quick", rolePreset: "general" });
+			extra.phase = "done";
+			persistRunDump(extra);
+		}
+		expect(readRunDumps()).toHaveLength(20);
+		expect(historyText()).toContain("cap 20");
 	});
 });

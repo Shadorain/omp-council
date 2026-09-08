@@ -1,8 +1,9 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
-import { councilRunsDir, runDumpPath } from "./paths.ts";
+import { agentDir, councilRunsPath } from "./paths.ts";
 import { runtimeAgentName } from "./runtime-agents.ts";
-import { ROLE_LENSES, STATE_ENTRY, isTerminalPhase } from "./types.ts";
+import { MAX_RUN_DUMPS, ROLE_LENSES, STATE_ENTRY, isTerminalPhase } from "./types.ts";
 import type {
 	ActiveRun,
 	ArenaProfile,
@@ -270,10 +271,46 @@ export function snapshotRun(run: ActiveRun): RunArchive {
 	};
 }
 
+export type RunDump = RunArchive & {
+	members?: Record<string, unknown>;
+	final?: unknown;
+	statusMessage?: string;
+};
+
+function dropLegacyRunDir(): void {
+	const legacy = join(agentDir(), "council-runs");
+	if (!existsSync(legacy)) return;
+	try {
+		rmSync(legacy, { recursive: true, force: true });
+	} catch {
+		// Best effort. The jsonl ring is the store now.
+	}
+}
+
+export function readRunDumps(): RunDump[] {
+	const path = councilRunsPath();
+	if (!existsSync(path)) return [];
+	try {
+		const rows: RunDump[] = [];
+		for (const line of readFileSync(path, "utf8").split("\n")) {
+			if (!line.trim()) continue;
+			try {
+				const row = JSON.parse(line) as RunDump;
+				if (row && typeof row.id === "string") rows.push(row);
+			} catch {
+				// Skip a corrupt line; keep the rest of the ring.
+			}
+		}
+		return rows;
+	} catch {
+		return [];
+	}
+}
+
 export function persistRunDump(run: ActiveRun): string | undefined {
 	try {
-		mkdirSync(councilRunsDir(), { recursive: true });
-		const dumpPath = runDumpPath(run.id);
+		dropLegacyRunDir();
+		const path = councilRunsPath();
 		const members: Record<string, unknown> = {};
 		for (const [key, member] of Object.entries(run.members)) {
 			members[key] = {
@@ -287,15 +324,15 @@ export function persistRunDump(run: ActiveRun): string | undefined {
 				fallback: member.fallback,
 			};
 		}
-		const body = {
+		const body: RunDump = {
 			...snapshotRun(run),
-			dumpPath,
 			members,
 			final: run.final ?? null,
 			statusMessage: run.statusMessage,
 		};
-		writeFileSync(dumpPath, `${JSON.stringify(body, null, 2)}\n`);
-		return dumpPath;
+		const rows = [body, ...readRunDumps().filter((row) => row.id !== run.id)].slice(0, MAX_RUN_DUMPS);
+		writeFileSync(path, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`);
+		return path;
 	} catch {
 		return undefined;
 	}
@@ -304,9 +341,9 @@ export function persistRunDump(run: ActiveRun): string | undefined {
 export function archiveRun(pi: ExtensionAPI, state: RuntimeState, run: ActiveRun): void {
 	if (run.archived) return;
 	run.archived = true;
-	const dumpPath = persistRunDump(run);
-	const archived = { ...snapshotRun(run), dumpPath };
-	state.history = [archived, ...state.history.filter((item) => item.id !== archived.id)].slice(0, 20);
+	persistRunDump(run);
+	const archived = snapshotRun(run);
+	state.history = [archived, ...state.history.filter((item) => item.id !== archived.id)].slice(0, MAX_RUN_DUMPS);
 	pi.appendEntry(STATE_ENTRY, archived);
 }
 
@@ -317,21 +354,38 @@ export function ensureNoActiveRun(state: RuntimeState, ctx: ExtensionCommandCont
 	return false;
 }
 
-export function historyText(state: RuntimeState): string {
-	if (state.history.length === 0) {
-		return `No completed Council/Arena runs in this session.\nDumps: ${councilRunsDir()}`;
+function summarizeDump(item: RunDump): string {
+	const when = new Date(item.finishedAt).toLocaleString();
+	const detail = item.kind === "council" ? `${item.mode}/${item.rolePreset}` : item.arenaProfile;
+	const models = item.participants.map((p) => p.label).join(" + ");
+	const q = item.question.replace(/\s+/g, " ").slice(0, 80);
+	return `${item.id}${item.temporary ? " tmp" : ""} ${item.kind} ${detail} • ${models} • ${when}\n  ${q}`;
+}
+
+function compactDump(row: RunDump): unknown {
+	const walk = (value: unknown): unknown => {
+		if (!value || typeof value !== "object") return value;
+		if (Array.isArray(value)) return value.map(walk);
+		const out: Record<string, unknown> = {};
+		for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+			if (key === "diff") continue;
+			out[key] = walk(child);
+		}
+		return out;
+	};
+	return walk(row);
+}
+
+export function historyText(id?: string): string {
+	const path = councilRunsPath();
+	const rows = readRunDumps();
+	if (id) {
+		const row = rows.find((item) => item.id.toLowerCase() === id.toLowerCase());
+		if (!row) return `No retained run ${id}. Last ${MAX_RUN_DUMPS} live in ${path}`;
+		return JSON.stringify(compactDump(row), null, 2).slice(0, 6000);
 	}
-	return state.history
-		.slice(0, 10)
-		.map((item) => {
-			const when = new Date(item.finishedAt).toLocaleString();
-			const detail = item.kind === "council" ? `${item.mode}/${item.rolePreset}` : item.arenaProfile;
-			const models = item.participants.map((p) => p.label).join(" + ");
-			const q = item.question.replace(/\s+/g, " ").slice(0, 80);
-			const dump = item.dumpPath ?? runDumpPath(item.id);
-			return `${item.id}${item.temporary ? " tmp" : ""} ${item.kind} ${detail} • ${models} • ${when}\n  ${q}\n  ${dump}`;
-		})
-		.join("\n");
+	if (rows.length === 0) return `No retained Council/Arena runs.\nLast ${MAX_RUN_DUMPS} live in ${path}`;
+	return `${rows.slice(0, 10).map(summarizeDump).join("\n")}\n\n${path}  (cap ${MAX_RUN_DUMPS})`;
 }
 
 export function markMembers(run: ActiveRun, from: MemberStatus[], to: MemberStatus): void {

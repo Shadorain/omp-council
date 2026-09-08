@@ -99,7 +99,7 @@ function usageText(): string {
 		"  /arena -t --profile rust -- Implement this refactor.",
 		"  Winner never auto-applies. /arena apply checks the patch, then asks.",
 		"",
-		"Also: status | history | clear | setup | config",
+		"Also: status | history | history C14 | clear | setup | config",
 		`Registry: ${councilConfigPath()}`,
 	].join("\n");
 }
@@ -605,8 +605,9 @@ async function handleSharedManagement(
 		}
 		return true;
 	}
-	if (raw === "history") {
-		ctx.ui.notify(historyText(state), "info");
+	if (raw === "history" || raw.startsWith("history ")) {
+		const id = raw.slice("history".length).trim();
+		ctx.ui.notify(historyText(id || undefined), "info");
 		return true;
 	}
 	if (raw === "clear") {

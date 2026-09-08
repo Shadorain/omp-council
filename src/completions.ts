@@ -63,7 +63,7 @@ const ARENA_FLAGS: FlagOption[] = [
 const COUNCIL_LIFECYCLE: ArgumentCompletion[] = [
 	{ value: "status", label: "status", description: "Show the active run" },
 	{ value: "cancel", label: "cancel", description: "Abort the active run and child agents" },
-	{ value: "history", label: "history", description: "List recent runs in this session" },
+	{ value: "history", label: "history", description: "Last 20 runs; pass an id like C14 to open one" },
 	{ value: "clear", label: "clear", description: "Dismiss a finished run widget" },
 	{ value: "setup", label: "setup", description: "Rebuild the saved participant registry" },
 	{ value: "config", label: "config", description: "Print the saved registry path and seats" },

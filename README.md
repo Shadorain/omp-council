@@ -243,7 +243,14 @@ cargo test --workspace
 
 ## Run dumps
 
-Each finished, failed, or cancelled run writes `~/.omp/agent/council-runs/<id>.json` (or `$OMP_AGENT_DIR/council-runs`). The file has the question, seats, costs, and the full structured `final` payload (opinions, rebuttals, Arena candidates/judgement). Session `/council history` lists the last 10 in this session plus those paths. `--tmp` still dumps output. It does not write `council.json`.
+One file, capped. `~/.omp/agent/council-runs.jsonl` keeps the last 20 finished/failed/cancelled runs (newest first). Older lines drop. `--tmp` still records output. Arena diffs are stored; `/council history C14` prints that run with `diff` stripped so the notify stays readable.
+
+```text
+/council history
+/council history C14
+```
+
+This is not `council.json`. Session widgets still restore from the session log; the jsonl is the cross-session record.
 
 ## Autocomplete
 

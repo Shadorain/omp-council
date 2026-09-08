@@ -218,6 +218,7 @@ export const WIDGET_KEY = "omp-council";
 export const STATUS_KEY = "omp-council";
 export const MAX_PARTICIPANTS = 8;
 export const MIN_PARTICIPANTS = 2;
+export const MAX_RUN_DUMPS = 20;
 export const CONFIG_FILENAME = "council.json";
 export const ROLE_PRESETS = ["general", "architecture", "debug", "security", "refactor"] as const;
 export function isTerminalPhase(phase: RunPhase): boolean {

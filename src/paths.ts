@@ -18,10 +18,6 @@ export function runtimeAgentDir(): string {
 	return join(agentDir(), "agents");
 }
 
-export function councilRunsDir(): string {
-	return join(agentDir(), "council-runs");
-}
-
-export function runDumpPath(id: string): string {
-	return join(councilRunsDir(), `${id}.json`);
+export function councilRunsPath(): string {
+	return join(agentDir(), "council-runs.jsonl");
 }
