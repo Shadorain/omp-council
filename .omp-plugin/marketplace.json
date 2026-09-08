@@ -1,0 +1,26 @@
+{
+  "name": "omp-council",
+  "owner": {
+    "name": "Shadorain"
+  },
+  "metadata": {
+    "description": "Provider-generic multi-model Council and Arena orchestration for OMP",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "council",
+      "description": "Shadow Council and Shadow Arena: independent multi-model review and competing implementations.",
+      "version": "1.0.0",
+      "license": "MIT",
+      "homepage": "https://github.com/Shadorain/omp-council",
+      "repository": "https://github.com/Shadorain/omp-council",
+      "category": "productivity",
+      "keywords": ["omp", "omp-extension", "council", "arena", "multi-model"],
+      "author": {
+        "name": "Shadorain"
+      },
+      "source": "./"
+    }
+  ]
+}

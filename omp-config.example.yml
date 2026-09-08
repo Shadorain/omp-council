@@ -1,0 +1,6 @@
+# omp-council does not require provider-specific modelRoles.
+# Keep the orchestration eval foregrounded for strongest /council cancel semantics.
+
+eval:
+  autoBackground:
+    enabled: false

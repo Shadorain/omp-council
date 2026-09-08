@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "participants": [
+    {
+      "id": "primary-reasoner",
+      "label": "Primary Reasoner",
+      "model": "provider-a/model-a",
+      "aliases": ["reasoner"],
+      "tags": ["reasoning", "premium"]
+    },
+    {
+      "id": "local-worker",
+      "label": "Local Worker",
+      "model": "local-provider/model-b",
+      "aliases": ["local"],
+      "tags": ["local", "cheap"]
+    }
+  ],
+  "presets": {
+    "default": ["primary-reasoner", "local-worker"],
+    "all": ["primary-reasoner", "local-worker"]
+  }
+}
