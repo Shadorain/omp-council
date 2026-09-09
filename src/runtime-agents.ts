@@ -187,7 +187,13 @@ export function cleanupSeatTranscripts(parentSessionFile: string | undefined, ru
 	return removed;
 }
 
+const SEAT_SESSION = /(?:^|\/)(?:c|a)\d+-(?:seat\d+-position|candidate-[a-z]|blind-judge)(?:\.(?:jsonl|json|md))?$/i;
+
 export function isOwnChildSession(sessionName: string | undefined, sessionFile: string | undefined): boolean {
-	const haystack = `${sessionName ?? ""} ${sessionFile ?? ""}`.toLowerCase();
-	return haystack.includes(RUNTIME_AGENT_PREFIX);
+	const name = sessionName?.trim() ?? "";
+	const file = sessionFile?.trim() ?? "";
+	if (isRuntimeAgentName(name) || isRuntimeAgentName(file.split(/[/\\]/).pop()?.replace(/\.(?:jsonl|json|md)$/i, "") ?? "")) {
+		return true;
+	}
+	return SEAT_SESSION.test(name) || SEAT_SESSION.test(file.replace(/\\/g, "/"));
 }

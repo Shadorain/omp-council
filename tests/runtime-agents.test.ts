@@ -119,7 +119,10 @@ describe("runtime agents", () => {
 
 	test("detects recursive child sessions", () => {
 		expect(isOwnChildSession("omp-council-1-abc-c1-seat1", undefined)).toBe(true);
+		expect(isOwnChildSession("C14-seat1-position", undefined)).toBe(true);
 		expect(isOwnChildSession("Main", "/tmp/session.jsonl")).toBe(false);
+		expect(isOwnChildSession("Main", "/Users/you/omp-council/session.jsonl")).toBe(false);
+		expect(isOwnChildSession(undefined, "/Users/you/.omp/agent/sessions/-Users-you-omp-council/2026.jsonl")).toBe(false);
 	});
 
 	test("stale leftover file from this instance is removed by prefix cleanup", async () => {
