@@ -213,6 +213,9 @@ function completeArgs(
 ): ArgumentCompletion[] {
 	if (hasPromptDelimiter(argumentText)) return [];
 	const { complete, partial } = splitArgs(argumentText);
+	if (complete.length === 0 && partial.toLowerCase() === "history") {
+		return [...lifecycleItems(partial, lifecycle), ...historyIdItems(kind, ["history"], "")];
+	}
 	if (complete[0] && isLifecycle(complete[0], lifecycle)) {
 		if (complete[0] === "history" && complete.length === 1) return historyIdItems(kind, complete, partial);
 		return [];

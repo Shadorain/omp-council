@@ -94,6 +94,9 @@ describe("history completions", () => {
 		expect(items[0]?.label).toBe("C14");
 		expect(items[0]?.description).toBe("keep the temp-agent pin?");
 		expect(councilArgumentCompletions("history C1").map((item) => item.label)).toEqual(["C14"]);
+		const typed = councilArgumentCompletions("history");
+		expect(typed.map((item) => item.value)).toEqual(["history", "history C14"]);
+		expect(typed[1]?.description).toBe("keep the temp-agent pin?");
 	});
 });
 
