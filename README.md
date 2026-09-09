@@ -23,7 +23,7 @@ Or:
 git clone https://github.com/Shadorain/omp-council.git ~/.omp/agent/extensions/omp-council
 ```
 
-Local checkout: `ln -sfn "$(pwd)" ~/.omp/agent/extensions/omp-council`, or `./install.sh` (copies `index.ts` and `src/*.ts`). Restart OMP.
+Local checkout: `./install.sh` (symlinks into `~/.omp/agent/extensions/omp-council`). `OMP_COUNCIL_COPY=1 ./install.sh` copies instead. Restart OMP after install. `/council config` prints `Loaded from:` so you can see which tree is live. Git pull on that tree, then restart. A copy will not pick up pulls.
 
 ## Council
 

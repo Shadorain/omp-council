@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { councilConfigPath } from "./paths.ts";
 import { DEFAULT_RETAIN_RUNS, MAX_RETAIN_RUNS } from "./types.ts";
 import type { CouncilConfig, ParticipantConfig, RunKind } from "./types.ts";
-
 export function clampRetain(value: unknown, fallback = DEFAULT_RETAIN_RUNS): number {
 	const n = typeof value === "number" ? value : Number(value);
 	if (!Number.isFinite(n)) return fallback;
@@ -42,10 +42,16 @@ export function writeConfig(config: CouncilConfig): void {
 	writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, "utf8");
 }
 
+export function extensionDir(): string {
+	return join(dirname(fileURLToPath(import.meta.url)), "..");
+}
+
 export function configSummary(config: CouncilConfig | undefined): string {
-	if (!config) return `No saved Council model registry.\nConfig path: ${councilConfigPath()}`;
+	const loaded = `Loaded from: ${extensionDir()}`;
+	if (!config) return `No saved Council model registry.\nConfig path: ${councilConfigPath()}\n${loaded}`;
 	const lines = [
 		`Council config: ${councilConfigPath()}`,
+		loaded,
 		`Participants (${config.participants.length}):`,
 		...config.participants.map((p) => `  ${p.id}: ${p.label} -> ${p.model}`),
 		`Arena judge: ${config.judgeModel ?? "current session model (dynamic)"}`,
