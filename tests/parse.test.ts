@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseArenaSyntax, parseCouncilSyntax, splitOptionalPayload } from "../src/parse.ts";
+import { parseArenaSyntax, parseCouncilSyntax, parseHistoryArgs, splitOptionalPayload } from "../src/parse.ts";
 
 describe("splitOptionalPayload", () => {
 	test("keeps flags when no -- delimiter", () => {
@@ -76,5 +76,15 @@ describe("parseArenaSyntax", () => {
 
 	test("lowercases --profile=Rust", () => {
 		expect(parseArenaSyntax("--profile=Rust -- task").arenaProfile).toBe("rust");
+	});
+});
+
+describe("parseHistoryArgs", () => {
+	test("reads an id and optional overlay flags", () => {
+		expect(parseHistoryArgs("history")).toEqual({ id: undefined, ephemeral: false });
+		expect(parseHistoryArgs("history C14")).toEqual({ id: "C14", ephemeral: false });
+		expect(parseHistoryArgs("history --btw C14")).toEqual({ id: "C14", ephemeral: true });
+		expect(parseHistoryArgs("history C14 -e")).toEqual({ id: "C14", ephemeral: true });
+		expect(parseHistoryArgs("history --ephemeral C1")).toEqual({ id: "C1", ephemeral: true });
 	});
 });

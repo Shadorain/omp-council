@@ -2,7 +2,7 @@ import type { ExtensionCommandContext, ExtensionContext, MessageRenderer } from 
 import { Text } from "@oh-my-pi/pi-tui";
 import { readConfig } from "./config.ts";
 import type { KickoffDetails } from "./orchestration.ts";
-import { STATUS_KEY, WIDGET_KEY, isTerminalPhase } from "./types.ts";
+import { HISTORY_WIDGET_KEY, STATUS_KEY, WIDGET_KEY, isTerminalPhase } from "./types.ts";
 import type { ActiveRun, MemberState, MemberStatus, RuntimeState } from "./types.ts";
 
 
@@ -365,4 +365,37 @@ export const historyRenderer: MessageRenderer<HistoryDetails> = (message, _optio
 		},
 	};
 };
+
+export function hideHistoryOverlay(ctx: ExtensionContext | ExtensionCommandContext): void {
+	ctx.ui.setWidget(HISTORY_WIDGET_KEY, undefined);
+}
+
+export function showHistoryOverlay(
+	ctx: ExtensionContext | ExtensionCommandContext,
+	details: HistoryDetails & { body: string },
+): void {
+	ctx.ui.setWidget(
+		HISTORY_WIDGET_KEY,
+		(_tui, theme) => ({
+			render(width: number) {
+				const innerW = Math.max(20, width);
+				return [
+					"",
+					chatBannerLine(details.kind, details.id, innerW, {
+						fg: (tone, text) => theme.fg(tone === "accent" ? "accent" : "muted", text),
+						bold: (text) => theme.bold(text),
+					}),
+					"",
+					...wrapLines(details.body, innerW).slice(0, 18),
+					"",
+					theme.fg("muted", "Esc dismiss"),
+					"",
+				];
+			},
+			invalidate() {},
+			dispose() {},
+		}),
+		{ placement: "aboveEditor" },
+	);
+}
 

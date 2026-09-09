@@ -112,4 +112,18 @@ export function parseArenaSyntax(raw: string): ArenaSyntax {
 	return { temporary, participantTokens, arenaProfile, profileSpecified, judgeToken, question };
 }
 
+const HISTORY_EPHEMERAL = new Set(["-e", "--ephemeral", "--btw"]);
+
+export function parseHistoryArgs(raw: string): { id?: string; ephemeral: boolean } {
+	const rest = raw.replace(/^history\b/i, "").trim();
+	const tokens = rest ? rest.split(/\s+/) : [];
+	let ephemeral = false;
+	const other: string[] = [];
+	for (const token of tokens) {
+		if (HISTORY_EPHEMERAL.has(token.toLowerCase())) ephemeral = true;
+		else other.push(token);
+	}
+	return { id: other[0], ephemeral };
+}
+
 

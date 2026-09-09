@@ -22,7 +22,7 @@ import {
 	arenaArgumentCompletions,
 	councilArgumentCompletions,
 } from "./completions.ts";
-import { parseArenaSyntax, parseCouncilSyntax } from "./parse.ts";
+import { parseArenaSyntax, parseCouncilSyntax, parseHistoryArgs } from "./parse.ts";
 import { councilConfigPath, runDumpsPath } from "./paths.ts";
 import { preselectedFromTokens, resolveParticipantTokens, selectedFromConfig, splitBarePrompt } from "./participants.ts";
 import {
@@ -80,7 +80,16 @@ import {
 	selectorsToParticipants,
 	setupRegistry,
 } from "./ui.ts";
-import { historyRenderer, isCouncilCancel, kickoffRenderer, participantLabels, renderWidget, runLabel } from "./widget.ts";
+import {
+	hideHistoryOverlay,
+	historyRenderer,
+	isCouncilCancel,
+	kickoffRenderer,
+	participantLabels,
+	renderWidget,
+	runLabel,
+	showHistoryOverlay,
+} from "./widget.ts";
 
 
 function usageText(): string {
@@ -97,7 +106,7 @@ function usageText(): string {
 		"",
 		"Skip saving:  /council -t",
 		"Skip the form:  /council --deep --role architecture -- Review this boundary.",
-		"",
+		"Replay:  /council history C14   Overlay:  /council history --btw C14  (Esc dismisses)",
 		"Arena:",
 		"  /arena",
 		"  /arena -t --profile rust -- Implement this refactor.",
@@ -338,7 +347,24 @@ function restoreEditorAfterCancel(
 	ctx.ui.setEditorText(isKickoffPrompt(snapshot) ? "" : snapshot);
 }
 
+function dismissHistoryOverlay(state: RuntimeState, ctx: ExtensionContext | ExtensionCommandContext): void {
+	state.detachHistory?.();
+	state.detachHistory = undefined;
+	hideHistoryOverlay(ctx);
+}
+
+function openHistoryOverlay(state: RuntimeState, ctx: ExtensionCommandContext, row: { id: string; kind: "council" | "arena" }, body: string): void {
+	dismissHistoryOverlay(state, ctx);
+	showHistoryOverlay(ctx, { id: row.id, kind: row.kind, body });
+	state.detachHistory = ctx.ui.onTerminalInput((data) => {
+		if (!isCouncilCancel(data)) return;
+		dismissHistoryOverlay(state, ctx);
+		return { consume: true };
+	});
+}
+
 function attachEscCancel(pi: ExtensionAPI, state: RuntimeState, ctx: ExtensionCommandContext): void {
+	dismissHistoryOverlay(state, ctx);
 	detachRunCancel(state);
 	state.detachCancel = ctx.ui.onTerminalInput((data) => {
 		if (!isCouncilCancel(data)) return;
@@ -611,18 +637,24 @@ async function handleSharedManagement(
 		return true;
 	}
 	if (raw === "history" || raw.startsWith("history ")) {
-		const id = raw.slice("history".length).trim();
-		if (!id) {
+		const parsed = parseHistoryArgs(raw);
+		if (!parsed.id) {
 			ctx.ui.notify(historyText(kind), "info");
 			return true;
 		}
-		const row = readRunDumps(kind).find((item) => item.id.toLowerCase() === id.toLowerCase());
+		const row = readRunDumps(kind).find((item) => item.id.toLowerCase() === parsed.id.toLowerCase());
 		const label = kind === "arena" ? "Arena" : "Council";
 		if (!row) {
-			ctx.ui.notify(`No retained ${label} run ${id}. Last ${retainLimit(kind)} live in ${runDumpsPath(kind)}`, "warning");
+			ctx.ui.notify(`No retained ${label} run ${parsed.id}. Last ${retainLimit(kind)} live in ${runDumpsPath(kind)}`, "warning");
 			return true;
 		}
 		const replay = historyReplayText(row);
+		const overlay = parsed.ephemeral && !(state.activeRun && !isTerminalPhase(state.activeRun.phase));
+		if (overlay) {
+			openHistoryOverlay(state, ctx, row, replay);
+			return true;
+		}
+		if (parsed.ephemeral) ctx.ui.notify("A run is live; history opened in chat instead of overlay.", "info");
 		pi.sendMessage(
 			{
 				customType: HISTORY_TYPE,
@@ -893,6 +925,7 @@ export default function councilExtension(pi: ExtensionAPI): void {
 			archiveRun(pi, state, state.activeRun);
 		}
 		detachRunCancel(state);
+		dismissHistoryOverlay(state, ctx);
 		ctx.ui.setWidget(WIDGET_KEY, undefined);
 		ctx.ui.setStatus(STATUS_KEY, undefined);
 		states.delete(key);

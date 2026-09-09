@@ -158,6 +158,7 @@ export interface RuntimeState {
 	instanceId: string;
 	sessionKey: string;
 	detachCancel?: () => void;
+	detachHistory?: () => void;
 	confirmingCancel?: boolean;
 }
 
@@ -219,6 +220,7 @@ export const KICKOFF_TYPE = "omp-council.kickoff";
 export const HISTORY_TYPE = "omp-council.history";
 
 export const WIDGET_KEY = "omp-council";
+export const HISTORY_WIDGET_KEY = "omp-council-history";
 export const STATUS_KEY = "omp-council";
 export const MAX_PARTICIPANTS = 8;
 export const MIN_PARTICIPANTS = 2;
