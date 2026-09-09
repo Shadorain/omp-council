@@ -140,10 +140,35 @@ export function visWidth(text: string): number {
 	return text.replace(/\x1b\[[0-9;]*m/g, "").length;
 }
 
+function clipVisible(text: string, width: number): string {
+	if (width <= 0) return "";
+	if (visWidth(text) <= width) return text;
+	const ellipsis = width === 1 ? "…" : "…";
+	const budget = Math.max(1, width - (width === 1 ? 0 : 1));
+	let vis = 0;
+	let out = "";
+	for (let i = 0; i < text.length; ) {
+		if (text[i] === "\x1b") {
+			const match = text.slice(i).match(/^\x1b\[[0-9;]*m/);
+			if (match) {
+				out += match[0];
+				i += match[0].length;
+				continue;
+			}
+		}
+		if (vis >= budget) break;
+		out += text[i];
+		vis += 1;
+		i += 1;
+	}
+	return width === 1 ? ellipsis : `${out}${ellipsis}`;
+}
+
 function padVisible(text: string, width: number): string {
-	const n = visWidth(text);
-	if (n >= width) return text;
-	return `${text}${" ".repeat(width - n)}`;
+	const clipped = clipVisible(text, width);
+	const n = visWidth(clipped);
+	if (n >= width) return clipped;
+	return `${clipped}${" ".repeat(width - n)}`;
 }
 
 export function chatBannerLine(
@@ -194,15 +219,12 @@ export function widgetLines(run: ActiveRun, now = 0, options?: WidgetRenderOptio
 	const titleText = live && shimmer ? wave(title, now) : paint(options, live ? "accent" : "muted", title);
 	const prefix = live ? `${paint(options, "accent", frame)} ` : "";
 	const heading = `${prefix}${titleText}`;
-	const headingPad = ` ${heading} `;
+	const headingPad = clipVisible(` ${heading} `, innerW);
 	const fill = Math.max(0, innerW - visWidth(headingPad));
 	const top = `${paint(options, "muted", "╭")}${headingPad}${paint(options, "muted", "─".repeat(fill))}${paint(options, "muted", "╮")}`;
 	const members = Object.values(run.members);
 	const visible = members.slice(0, 6);
-	const inner = [
-		top,
-		` ${paint(options, "muted", "│")} ${paint(options, "muted", short(run.question, innerW - 4))}`,
-	];
+	const inner = [top, ` ${short(run.question, Math.max(8, innerW - 2))}`];
 	if (live) inner.push(` ${paint(options, "muted", phaseCaption(run))}`);
 	for (const member of visible) {
 		inner.push(

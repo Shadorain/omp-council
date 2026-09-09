@@ -741,13 +741,6 @@ export default function councilExtension(pi: ExtensionAPI): void {
 		if (!state.activeRun || isTerminalPhase(state.activeRun.phase)) return undefined;
 		if (state.activeRun.cancelRequested) return { block: true, reason: `${state.activeRun.id} has been cancelled.` };
 
-		if (event.toolName === "task") {
-			return {
-				block: true,
-				reason: `${state.activeRun.id} is extension-orchestrated. Use the single eval call requested by Council/Arena instead of task.`,
-			};
-		}
-
 		if (event.toolName === "eval") {
 			if (state.activeRun.awaitingEval) {
 				state.activeRun.awaitingEval = false;
@@ -762,7 +755,18 @@ export default function councilExtension(pi: ExtensionAPI): void {
 				reason: `${state.activeRun.id} already owns the active orchestration eval. Synthesize its result instead of starting another eval.`,
 			};
 		}
-		return undefined;
+
+		if (state.activeRun.phase === "synthesizing") {
+			return {
+				block: true,
+				reason: `${state.activeRun.id} evidence is ready. Synthesize in text. Do not use tools.`,
+			};
+		}
+
+		return {
+			block: true,
+			reason: `${state.activeRun.id} is extension-orchestrated. Call eval once. Do not search the repo or spawn task agents.`,
+		};
 	});
 	pi.on("tool_result", async (event, ctx) => {
 		const state = stateFor(ctx);

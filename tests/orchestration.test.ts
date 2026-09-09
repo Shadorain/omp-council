@@ -148,11 +148,10 @@ describe("evalInputFor", () => {
 
 describe("chair kickoff", () => {
 	test("chair turn is labeled Council work, not a raw user chat line", () => {
-
 		const run = councilRun();
 		const text = chairTurnContent(run);
-		expect(text).toBe("Council C4 · tmp · debate · architecture\n\nReview this architecture.");
-		expect(text).not.toContain("Call the eval tool");
+		expect(text).toBe("Council C4 · tmp · debate · architecture\n\nCall eval once. Do not search the repo.");
+		expect(text).not.toContain("Review this architecture.");
 		expect(text).not.toContain("not a normal chat turn");
 		expect(userFacingKickoff(run)).toBe(text);
 		expect(isKickoffPrompt(text)).toBe(false);
@@ -172,6 +171,7 @@ describe("chair kickoff", () => {
 	test("eval instructions append to the system prompt, not the user message", () => {
 		const run = councilRun();
 		expect(chairInstruction(run)).toContain("eval");
+		expect(chairInstruction(run)).toContain("Review this architecture.");
 		expect(applyChairSystemPrompt(["base"], run)).toEqual(["base", chairInstruction(run)]);
 	});
 
@@ -190,7 +190,8 @@ describe("chair kickoff", () => {
 		expect(isSmokeQuestion("Review this architecture.")).toBe(false);
 		const run = councilRun();
 		run.question = "Testing";
-		expect(chairTurnContent(run)).toContain("Harness smoke");
+		expect(chairTurnContent(run)).toContain("Call eval once");
+		expect(chairTurnContent(run)).not.toContain("Testing");
 		expect(chairInstruction(run)).toContain("harness smoke");
 		expect(councilEvalCode(run)).toContain("harness smoke check");
 	});

@@ -158,7 +158,7 @@ describe("applyProgress", () => {
 		});
 		run.phase = "done";
 		run.finishedAt = run.startedAt + 20000;
-		const text = widgetLines(run, run.startedAt + 20000, { shimmer: false }).join("\n");
+		const text = widgetLines(run, run.startedAt + 20000, { shimmer: false, width: 88 }).join("\n");
 		expect(text).toContain("$0.02");
 		expect(text).toContain("8.1s");
 		expect(text).toContain("$0.09");
@@ -211,6 +211,26 @@ describe("applyProgress", () => {
 		expect(lines[0]).not.toContain("Testing");
 		expect(lines[0]).not.toContain("Gemini");
 		expect(visWidth(lines[0])).toBe(72);
+	});
+
+	test("widget frame stays within width even with a long question", () => {
+		const state = createRuntimeState("s");
+		const run = makeRun(
+			state,
+			"council",
+			"login kicks people after 5 minutes even though we told them 24h. find every place that could cause that and write a dissertation about fallback chains and runtime agent files.",
+			[
+				{ label: "Gemini 3.6 Flash Extra Long Name", model: "m-a", provider: "p", temporary: true },
+				{ label: "Gemini 3.7 Flash Extra Long Name", model: "m-b", provider: "p", temporary: true },
+			],
+			{ temporary: true, mode: "debate", rolePreset: "architecture" },
+		);
+		run.phase = "independent";
+		applyProgress(run, { phase: "independent", member: "seat1", status: "running" });
+		const width = 48;
+		for (const line of widgetLines(run, run.startedAt + 8000, { shimmer: false, width })) {
+			expect(visWidth(line)).toBeLessThanOrEqual(width);
+		}
 	});
 });
 

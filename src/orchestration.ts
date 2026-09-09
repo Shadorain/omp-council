@@ -431,11 +431,7 @@ export function chairTurnContent(run: ActiveRun): string {
 	if (run.mode) bits.push(run.mode);
 	if (run.rolePreset) bits.push(run.rolePreset);
 	if (run.arenaProfile) bits.push(run.arenaProfile);
-	const header = `${kind} ${bits.join(" · ")}`;
-	if (isSmokeQuestion(run.question)) {
-		return `${header}\n\nHarness smoke. The operator prompt is ${JSON.stringify(run.question)}. Do not review the repo. Call eval once, then confirm seats returned valid structured output.`;
-	}
-	return `${header}\n\n${run.question}`;
+	return `${kind} ${bits.join(" · ")}\n\nCall eval once. Do not search the repo.`;
 }
 
 export function userFacingKickoff(run: ActiveRun): string {
@@ -447,9 +443,9 @@ export function chairInstruction(run: ActiveRun): string {
 		? `The question ${JSON.stringify(run.question)} is a harness smoke check. It is not a request to review tests, architecture, or the repository. After eval, report only that seats finished and whether the structured output is valid.`
 		: `Question:\n${run.question}`;
 	if (run.kind === "council") {
-		return `Shadow Council ${run.id} is active. ${smoke} Call the eval tool exactly once. The Council extension replaces that eval with deterministic orchestration. Do not spawn task agents and do not substitute a different workflow. After eval returns, synthesize its structured evidence. Do not choose by majority vote.`;
+		return `Shadow Council ${run.id} is active. ${smoke} Your first action is the eval tool, exactly once. The Council extension replaces that eval with deterministic seat orchestration. Do not read, grep, glob, bash, or spawn task agents before eval returns. After eval returns, synthesize its structured evidence. Do not choose by majority vote.`;
 	}
-	return `Shadow Arena ${run.id} is active. ${smoke} Call the eval tool exactly once. The Arena extension replaces that eval with deterministic orchestration. Do not spawn task agents and do not substitute a different workflow. After eval returns, report the blind judge result, then reveal which model produced each candidate. Do not apply changes unless I run /arena apply.`;
+	return `Shadow Arena ${run.id} is active. ${smoke} Your first action is the eval tool, exactly once. The Arena extension replaces that eval with deterministic candidate orchestration. Do not read, grep, glob, bash, or spawn task agents before eval returns. After eval returns, report the blind judge result, then reveal which model produced each candidate. Do not apply changes unless I run /arena apply.`;
 }
 
 
