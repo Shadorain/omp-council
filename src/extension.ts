@@ -106,7 +106,7 @@ function usageText(): string {
 		"",
 		"Skip saving:  /council -t",
 		"Skip the form:  /council --deep --role architecture -- Review this boundary.",
-		"Replay:  /council history C14   Overlay:  /council history --btw C14  (Esc dismisses)",
+		"Replay:  /council history C14  (b add to chat · Esc dismiss)",
 		"Arena:",
 		"  /arena",
 		"  /arena -t --profile rust -- Implement this refactor.",
@@ -350,13 +350,26 @@ function restoreEditorAfterCancel(
 function dismissHistoryOverlay(state: RuntimeState, ctx: ExtensionContext | ExtensionCommandContext): void {
 	state.detachHistory?.();
 	state.detachHistory = undefined;
+	state.historyOpen = false;
 	hideHistoryOverlay(ctx);
 }
 
-function openHistoryOverlay(state: RuntimeState, ctx: ExtensionCommandContext, row: { id: string; kind: "council" | "arena" }, body: string): void {
+function openHistoryOverlay(
+	state: RuntimeState,
+	ctx: ExtensionCommandContext,
+	row: { id: string; kind: "council" | "arena" },
+	body: string,
+	keep: () => void,
+): void {
 	dismissHistoryOverlay(state, ctx);
+	state.historyOpen = true;
 	showHistoryOverlay(ctx, { id: row.id, kind: row.kind, body });
 	state.detachHistory = ctx.ui.onTerminalInput((data) => {
+		if (data === "b" || data === "B") {
+			keep();
+			dismissHistoryOverlay(state, ctx);
+			return { consume: true };
+		}
 		if (!isCouncilCancel(data)) return;
 		dismissHistoryOverlay(state, ctx);
 		return { consume: true };
@@ -368,6 +381,7 @@ function attachEscCancel(pi: ExtensionAPI, state: RuntimeState, ctx: ExtensionCo
 	detachRunCancel(state);
 	state.detachCancel = ctx.ui.onTerminalInput((data) => {
 		if (!isCouncilCancel(data)) return;
+		if (state.historyOpen) return { consume: true };
 		if (!state.activeRun || isTerminalPhase(state.activeRun.phase) || state.activeRun.cancelRequested) return;
 		if (state.confirmingCancel) return { consume: true };
 		state.confirmingCancel = true;
@@ -649,22 +663,18 @@ async function handleSharedManagement(
 			return true;
 		}
 		const replay = historyReplayText(row);
-		const overlay = parsed.ephemeral && !(state.activeRun && !isTerminalPhase(state.activeRun.phase));
-		if (overlay) {
-			openHistoryOverlay(state, ctx, row, replay);
-			return true;
-		}
-		if (parsed.ephemeral) ctx.ui.notify("A run is live; history opened in chat instead of overlay.", "info");
-		pi.sendMessage(
-			{
-				customType: HISTORY_TYPE,
-				content: `${label} ${row.id} · history`,
-				display: true,
-				attribution: "agent",
-				details: { id: row.id, kind: row.kind, body: replay },
-			},
-			{ triggerTurn: false },
-		);
+		openHistoryOverlay(state, ctx, row, replay, () => {
+			pi.sendMessage(
+				{
+					customType: HISTORY_TYPE,
+					content: `${label} ${row.id} · history`,
+					display: true,
+					attribution: "agent",
+					details: { id: row.id, kind: row.kind, body: replay },
+				},
+				{ triggerTurn: false },
+			);
+		});
 		return true;
 	}
 	if (raw === "clear") {

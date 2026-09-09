@@ -90,14 +90,13 @@ describe("history completions", () => {
 			`${JSON.stringify({ id: "C14", kind: "council", question: "keep the temp-agent pin?", participants: [], finishedAt: 1 })}\n`,
 		);
 		const items = councilArgumentCompletions("history ");
-		expect(items.map((item) => item.value)).toEqual(["history --btw", "history C14"]);
-		expect(items[1]?.label).toBe("C14");
-		expect(items[1]?.description).toBe("keep the temp-agent pin?");
+		expect(items.map((item) => item.value)).toEqual(["history C14"]);
+		expect(items[0]?.label).toBe("C14");
+		expect(items[0]?.description).toBe("keep the temp-agent pin?");
 		expect(councilArgumentCompletions("history C1").map((item) => item.label)).toEqual(["C14"]);
-		expect(councilArgumentCompletions("history --btw ").map((item) => item.value)).toEqual(["history --btw C14"]);
 		const typed = councilArgumentCompletions("history");
-		expect(typed.map((item) => item.value)).toEqual(["history", "history --btw", "history C14"]);
-		expect(typed[2]?.description).toBe("keep the temp-agent pin?");
+		expect(typed.map((item) => item.value)).toEqual(["history", "history C14"]);
+		expect(typed[1]?.description).toBe("keep the temp-agent pin?");
 	});
 });
 

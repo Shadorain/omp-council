@@ -185,11 +185,6 @@ function flagItems(
 	return items;
 }
 
-function isHistoryEphemeralToken(token: string): boolean {
-	const lower = token.toLowerCase();
-	return lower === "-e" || lower === "--ephemeral" || lower === "--btw";
-}
-
 function historyIdItems(
 	kind: "council" | "arena",
 	complete: string[],
@@ -206,25 +201,6 @@ function historyIdItems(
 		}));
 }
 
-function historyFollowOns(
-	kind: "council" | "arena",
-	complete: string[],
-	partial: string,
-): ArgumentCompletion[] {
-	const usedEphemeral = complete.some(isHistoryEphemeralToken);
-	const items: ArgumentCompletion[] = [];
-	if (!usedEphemeral && (partial.length === 0 || "--btw".startsWith(partial) || "-e".startsWith(partial) || "--ephemeral".startsWith(partial))) {
-		const insert = partial === "-e" || (partial.startsWith("-e") && !partial.startsWith("--")) ? "-e" : "--btw";
-		items.push({
-			value: joinValue(complete, insert),
-			label: insert,
-			description: "Overlay like /btw; Esc dismisses, not saved to chat",
-		});
-	}
-	if (!partial.startsWith("-")) items.push(...historyIdItems(kind, complete, partial));
-	return items;
-}
-
 function lifecycleItems(partial: string, lifecycle: ArgumentCompletion[]): ArgumentCompletion[] {
 	return lifecycle.filter((item) => partial.length === 0 || item.value.startsWith(partial));
 }
@@ -239,10 +215,10 @@ function completeArgs(
 	if (hasPromptDelimiter(argumentText)) return [];
 	const { complete, partial } = splitArgs(argumentText);
 	if (complete.length === 0 && partial.toLowerCase() === "history") {
-		return [...lifecycleItems(partial, lifecycle), ...historyFollowOns(kind, ["history"], "")];
+		return [...lifecycleItems(partial, lifecycle), ...historyIdItems(kind, ["history"], "")];
 	}
 	if (complete[0] && isLifecycle(complete[0], lifecycle)) {
-		if (complete[0] === "history") return historyFollowOns(kind, complete, partial);
+		if (complete[0] === "history" && complete.length === 1) return historyIdItems(kind, complete, partial);
 		return [];
 	}
 	for (const flag of flags) {

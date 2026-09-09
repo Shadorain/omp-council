@@ -388,7 +388,7 @@ export function showHistoryOverlay(
 					"",
 					...wrapLines(details.body, innerW).slice(0, 18),
 					"",
-					theme.fg("muted", "Esc dismiss"),
+					theme.fg("muted", "b add to chat  ·  Esc dismiss"),
 					"",
 				];
 			},

@@ -81,12 +81,11 @@ Shared: `status`, `cancel`, `history`, `clear`, `setup`, `config`, `help`.
 ```text
 /council history
 /council history C14
-/council history --btw C14
 /arena history
 /arena history A3
 ```
 
-Bare `history` lists the last 10. Tab after `history` completes run ids; the description is the original prompt. Default opens the run in chat (`Council · C14` banner, seats, chair). `--btw` / `-e` / `--ephemeral` is a /btw-style overlay: Esc dismisses, nothing written to the transcript. Overlay falls back to chat if a Council/Arena run is live. The model only sees a one-line stub when history is posted to chat. Runs archived before chair capture have no chair text.
+Bare `history` lists the last 10. Tab after `history` completes run ids; the description is the original prompt. Picking an id opens a /btw-style overlay. `b` adds it to chat (`Council · C14` banner, seats, chair). Esc dismisses and writes nothing. The model only sees a one-line stub when kept. Runs archived before chair capture have no chair text.
 
 `/council test` after setup runs the saved seats with prompt `test`. Unresolved tokens are the question. `--` still forces an explicit prompt.
 

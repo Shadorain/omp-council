@@ -80,11 +80,9 @@ describe("parseArenaSyntax", () => {
 });
 
 describe("parseHistoryArgs", () => {
-	test("reads an id and optional overlay flags", () => {
-		expect(parseHistoryArgs("history")).toEqual({ id: undefined, ephemeral: false });
-		expect(parseHistoryArgs("history C14")).toEqual({ id: "C14", ephemeral: false });
-		expect(parseHistoryArgs("history --btw C14")).toEqual({ id: "C14", ephemeral: true });
-		expect(parseHistoryArgs("history C14 -e")).toEqual({ id: "C14", ephemeral: true });
-		expect(parseHistoryArgs("history --ephemeral C1")).toEqual({ id: "C1", ephemeral: true });
+	test("reads the run id", () => {
+		expect(parseHistoryArgs("history")).toEqual({ id: undefined });
+		expect(parseHistoryArgs("history C14")).toEqual({ id: "C14" });
+		expect(parseHistoryArgs("history c1 extra")).toEqual({ id: "c1" });
 	});
 });

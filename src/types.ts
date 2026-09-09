@@ -159,6 +159,7 @@ export interface RuntimeState {
 	sessionKey: string;
 	detachCancel?: () => void;
 	detachHistory?: () => void;
+	historyOpen?: boolean;
 	confirmingCancel?: boolean;
 }
 
