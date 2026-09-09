@@ -2,6 +2,8 @@
 
 Run several of your OMP models on one question.
 
+<video src="docs/demo.mp4" width="100%" autoplay loop muted playsinline controls></video>
+
 `/council` is review. Models answer independently, then optionally debate. The current session model chairs and writes the decision. No majority vote.
 
 `/arena` is competition. Models implement in isolated workspaces. A blind judge sees Candidate A/B/C, not model names. Nothing hits your tree until `/arena apply`.
@@ -72,33 +74,29 @@ cargo test --workspace
 
 `--profile auto` uses rust if there is a root `Cargo.toml`.
 
+## Look back
+
+```text
+/council history
+/council history C14
+/arena history A3
+```
+
+Tab after `history` lists run ids with the original prompt.
+
+Picking an id opens an overlay like `/btw`. `b` keeps it in chat. Esc quits and writes nothing.
+
+Last 20 runs live in `~/.omp/agent/council-runs.jsonl` and `arena-runs.jsonl`. Caps are `retainCouncil` / `retainArena` in `council.json`.
+
 ## Commands
 
 Shared: `status`, `cancel`, `history`, `clear`, `setup`, `config`, `help`.
 
 `/council cancel` can cancel an Arena, and the other way around. `clear` refuses while a run is live.
 
-```text
-/council history
-/council history C14
-/arena history
-/arena history A3
-```
-
-Bare `history` lists the last 10. Tab after `history` completes run ids; the description is the original prompt. Picking an id opens a /btw-style overlay. `b` adds it to chat (`Council · C14` banner, seats, chair). Esc dismisses and writes nothing. The model only sees a one-line stub when kept. Runs archived before chair capture have no chair text.
-
 `/council test` after setup runs the saved seats with prompt `test`. Unresolved tokens are the question. `--` still forces an explicit prompt.
 
 Picker: type to filter, Space toggles, Enter submits.
-
-## History files
-
-Last N runs, newest first:
-
-- `~/.omp/agent/council-runs.jsonl`
-- `~/.omp/agent/arena-runs.jsonl`
-
-Set the caps in `council.json`. Default 20, max 200, `0` empties that file. `/council setup` keeps these fields. `--tmp` still records. Arena diffs stay on disk; replay omits them.
 
 ## Config
 
