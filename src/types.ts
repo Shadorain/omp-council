@@ -131,6 +131,7 @@ export interface ActiveRun {
 	runtimeAgentPaths: string[];
 	members: Record<string, MemberState>;
 	final?: unknown;
+	ruling?: string;
 	archived?: boolean;
 	editorSnapshot?: string;
 }

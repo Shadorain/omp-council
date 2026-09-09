@@ -275,6 +275,7 @@ export function snapshotRun(run: ActiveRun): RunArchive {
 export type RunDump = RunArchive & {
 	members?: Record<string, unknown>;
 	final?: unknown;
+	ruling?: string;
 	statusMessage?: string;
 };
 
@@ -334,6 +335,7 @@ export function persistRunDump(run: ActiveRun): string | undefined {
 			...snapshotRun(run),
 			members,
 			final: run.final ?? null,
+			ruling: run.ruling,
 			statusMessage: run.statusMessage,
 		};
 		const rows = [body, ...readRunDumps(run.kind).filter((row) => row.id !== run.id)].slice(0, cap);
@@ -404,6 +406,7 @@ export function historyReplayText(row: RunDump): string {
 	const final = asRecord(row.final);
 	if (!final) {
 		if (row.statusMessage || row.phase) parts.push("", String(row.statusMessage ?? row.phase));
+		appendRuling(parts, row);
 		return parts.join("\n");
 	}
 	if (row.kind === "arena" || final.kind === "arena") {
@@ -428,6 +431,7 @@ export function historyReplayText(row: RunDump): string {
 			if (typeof data?.summary === "string") parts.push(data.summary);
 			if (typeof data?.approach === "string" && data.approach !== data.summary) parts.push(data.approach);
 		}
+		appendRuling(parts, row);
 		return parts.join("\n");
 	}
 	const round = Array.isArray(final.finalReview)
@@ -445,7 +449,28 @@ export function historyReplayText(row: RunDump): string {
 		const label = typeof seat?.label === "string" ? seat.label : key || "Seat";
 		parts.push("", formatOpinion(label, item));
 	}
+	appendRuling(parts, row);
 	return parts.join("\n");
+}
+
+function appendRuling(parts: string[], row: RunDump): void {
+	if (typeof row.ruling === "string" && row.ruling.trim()) {
+		parts.push("", "Chair", row.ruling.trim());
+	}
+}
+
+export function assistantMessageText(message: unknown): string {
+	const rec = asRecord(message);
+	if (!rec) return "";
+	if (typeof rec.content === "string") return rec.content.trim();
+	if (!Array.isArray(rec.content)) return "";
+	return rec.content
+		.map(asRecord)
+		.filter((block) => block?.type === "text" && typeof block.text === "string")
+		.map((block) => String(block?.text ?? "").trim())
+		.filter(Boolean)
+		.join("\n")
+		.trim();
 }
 
 export function historyText(kind: "council" | "arena"): string {

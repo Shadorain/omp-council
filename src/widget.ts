@@ -323,6 +323,7 @@ export const kickoffRenderer: MessageRenderer<KickoffDetails> = (message, _optio
 export interface HistoryDetails {
 	id: string;
 	kind: "council" | "arena";
+	body?: string;
 }
 
 export function wrapLines(text: string, width: number): string[] {
@@ -348,7 +349,7 @@ export function wrapLines(text: string, width: number): string[] {
 export const historyRenderer: MessageRenderer<HistoryDetails> = (message, _options, theme) => {
 	const details = message.details;
 	if (!details) return undefined;
-	const body = typeof message.content === "string" ? message.content : "";
+	const body = typeof details.body === "string" && details.body ? details.body : typeof message.content === "string" ? message.content : "";
 	return {
 		render(width: number) {
 			return [

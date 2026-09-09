@@ -85,7 +85,7 @@ Shared: `status`, `cancel`, `history`, `clear`, `setup`, `config`, `help`.
 /arena history A3
 ```
 
-Bare `history` lists the last 10. Tab after `history` completes run ids; the description is the original prompt. Picking an id posts a full-width `Council · C14` / `Arena · A3` banner plus the seats' recommendations as chat text, not JSON.
+Bare `history` lists the last 10. Tab after `history` completes run ids; the description is the original prompt. Picking an id posts a full-width `Council · C14` / `Arena · A3` banner plus seats and the chair ruling as chat text. It stays in the transcript (not a toast). The model only sees a one-line stub, not the dump. Runs archived before this build have no chair text.
 
 `/council test` after setup runs the saved seats with prompt `test`. Unresolved tokens are the question. `--` still forces an explicit prompt.
 

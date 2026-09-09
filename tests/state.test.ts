@@ -291,11 +291,14 @@ describe("clear/cancel gates", () => {
 		];
 		const council = makeRun(state, "council", "Testing", selected, { temporary: true, mode: "quick", rolePreset: "general" });
 		council.final = { kind: "council", runId: council.id, initial: [{ member: "seat1", data: { recommendation: "ok" } }] };
+		council.ruling = "Keep the pin. Fallback is still evidence.";
 		council.phase = "done";
 		expect(persistRunDump(council)).toBe(join(dir, "council-runs.jsonl"));
 		const replay = historyReplayText(readRunDumps("council")[0]!);
 		expect(replay).toContain("Testing");
 		expect(replay).toContain("ok");
+		expect(replay).toContain("Chair");
+		expect(replay).toContain("Keep the pin");
 		expect(replay).not.toContain('"recommendation"');
 		expect(kickoffCardLines({ kind: "council", id: council.id, temporary: true, question: "Testing", seats: ["A"] }).join("\n")).toContain(`Council · ${council.id}`);
 		const arena = makeRun(state, "arena", "Implement", selected, { temporary: true, arenaProfile: "rust", judgeModel: "p/j" });

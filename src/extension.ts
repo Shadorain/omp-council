@@ -38,6 +38,7 @@ import {
 	applyOrchestrationResult,
 	applyProgress,
 	archiveRun,
+	assistantMessageText,
 	createRuntimeState,
 	ensureNoActiveRun,
 	freezeRunClock,
@@ -621,13 +622,14 @@ async function handleSharedManagement(
 			ctx.ui.notify(`No retained ${label} run ${id}. Last ${retainLimit(kind)} live in ${runDumpsPath(kind)}`, "warning");
 			return true;
 		}
+		const replay = historyReplayText(row);
 		pi.sendMessage(
 			{
 				customType: HISTORY_TYPE,
-				content: historyReplayText(row),
+				content: `${label} ${row.id} · history`,
 				display: true,
 				attribution: "agent",
-				details: { id: row.id, kind: row.kind },
+				details: { id: row.id, kind: row.kind, body: replay },
 			},
 			{ triggerTurn: false },
 		);
@@ -830,6 +832,14 @@ export default function councilExtension(pi: ExtensionAPI): void {
 		return undefined;
 	});
 
+	pi.on("message_end", (event, ctx) => {
+		const state = stateFor(ctx);
+		if (!state.activeRun || state.activeRun.phase !== "synthesizing") return;
+		if (event.message.role !== "assistant") return;
+		const ruling = assistantMessageText(event.message);
+		if (ruling && !isChairPlumbing(ruling)) state.activeRun.ruling = ruling;
+	});
+
 	pi.on("session_stop", async (event, ctx) => {
 		const state = stateFor(ctx);
 		if (!state.activeRun || isTerminalPhase(state.activeRun.phase) || state.activeRun.cancelRequested) return undefined;
@@ -842,10 +852,12 @@ export default function councilExtension(pi: ExtensionAPI): void {
 		return undefined;
 	});
 
-	pi.on("turn_end", async (_event, ctx) => {
+	pi.on("turn_end", async (event, ctx) => {
 		const state = stateFor(ctx);
 		if (!state.activeRun || state.activeRun.cancelRequested) return;
 		if (state.activeRun.phase === "synthesizing") {
+			const ruling = assistantMessageText(event.message);
+			if (ruling && !isChairPlumbing(ruling)) state.activeRun.ruling = ruling;
 			state.activeRun.phase = "done";
 			freezeRunClock(state.activeRun);
 			archiveRun(pi, state, state.activeRun);
