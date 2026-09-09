@@ -2,7 +2,7 @@
 
 Run several of your OMP models on one question.
 
-<video src="docs/demo.mp4" width="100%" autoplay loop muted playsinline controls></video>
+![Council](docs/demo.gif)
 
 `/council` is review. Models answer independently, then optionally debate. The current session model chairs and writes the decision. No majority vote.
 
@@ -10,7 +10,7 @@ Run several of your OMP models on one question.
 
 Any model OMP shows as authenticated can sit. No vendor list.
 
-Needs OMP 18.1.14+.
+Needs OMP v18+.
 
 ## Install
 
