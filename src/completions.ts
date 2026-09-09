@@ -1,5 +1,5 @@
+import { readRunDumps } from "./state.ts";
 import { ARENA_PROFILES, ROLE_PRESETS } from "./types.ts";
-
 export interface ArgumentCompletion {
 	value: string;
 	label: string;
@@ -63,7 +63,7 @@ const ARENA_FLAGS: FlagOption[] = [
 const COUNCIL_LIFECYCLE: ArgumentCompletion[] = [
 	{ value: "status", label: "status", description: "Show the active run" },
 	{ value: "cancel", label: "cancel", description: "Abort the active run and child agents" },
-	{ value: "history", label: "history", description: "Last 20 runs; pass an id like C14 to open one" },
+	{ value: "history", label: "history", description: "Replay a saved run; tab an id to see its prompt" },
 	{ value: "clear", label: "clear", description: "Dismiss a finished run widget" },
 	{ value: "setup", label: "setup", description: "Rebuild the saved participant registry" },
 	{ value: "config", label: "config", description: "Print the saved registry path and seats" },
@@ -185,20 +185,38 @@ function flagItems(
 	return items;
 }
 
+function historyIdItems(
+	kind: "council" | "arena",
+	complete: string[],
+	partial: string,
+): ArgumentCompletion[] {
+	const needle = partial.toLowerCase();
+	return readRunDumps(kind)
+		.filter((row) => !needle || row.id.toLowerCase().startsWith(needle))
+		.slice(0, 20)
+		.map((row) => ({
+			value: joinValue(complete, row.id),
+			label: row.id,
+			description: row.question.replace(/\s+/g, " ").trim().slice(0, 96) || "(no prompt)",
+		}));
+}
 function lifecycleItems(partial: string, lifecycle: ArgumentCompletion[]): ArgumentCompletion[] {
 	return lifecycle.filter((item) => partial.length === 0 || item.value.startsWith(partial));
 }
 
 function completeArgs(
 	argumentText: string,
+	kind: "council" | "arena",
 	flags: FlagOption[],
 	lifecycle: ArgumentCompletion[],
 	placeholder: { label: string; description: string; hint: string },
 ): ArgumentCompletion[] {
 	if (hasPromptDelimiter(argumentText)) return [];
 	const { complete, partial } = splitArgs(argumentText);
-	if (complete[0] && isLifecycle(complete[0], lifecycle)) return [];
-
+	if (complete[0] && isLifecycle(complete[0], lifecycle)) {
+		if (complete[0] === "history" && complete.length === 1) return historyIdItems(kind, complete, partial);
+		return [];
+	}
 	for (const flag of flags) {
 		const valued = completeValueFlag(complete, partial, flag);
 		if (valued) return valued;
@@ -232,7 +250,7 @@ function completeArgs(
 }
 
 export function councilArgumentCompletions(argumentText: string): ArgumentCompletion[] {
-	return completeArgs(argumentText, COUNCIL_FLAGS, COUNCIL_LIFECYCLE, {
+	return completeArgs(argumentText, "council", COUNCIL_FLAGS, COUNCIL_LIFECYCLE, {
 		label: "[question]",
 		description: "Optional. Empty opens the Council UI",
 		hint: "[question]",
@@ -240,7 +258,7 @@ export function councilArgumentCompletions(argumentText: string): ArgumentComple
 }
 
 export function arenaArgumentCompletions(argumentText: string): ArgumentCompletion[] {
-	return completeArgs(argumentText, ARENA_FLAGS, ARENA_LIFECYCLE, {
+	return completeArgs(argumentText, "arena", ARENA_FLAGS, ARENA_LIFECYCLE, {
 		label: "[task]",
 		description: "Optional. Empty opens the Arena UI",
 		hint: "[task]",

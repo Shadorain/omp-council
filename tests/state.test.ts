@@ -4,7 +4,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeConfig } from "../src/config.ts";
-import { persistRunDump, readRunDumps, historyText, applyOrchestrationResult, applyProgress, assignLenses, createRuntimeState, hydrateUsageFromEval, makeRun, snapshotRun } from "../src/state.ts";
+import { persistRunDump, readRunDumps, historyReplayText, historyText, applyOrchestrationResult, applyProgress, assignLenses, createRuntimeState, hydrateUsageFromEval, makeRun, snapshotRun } from "../src/state.ts";
 import { isTerminalPhase } from "../src/types.ts";
 import { formatCost, formatDuration, kickoffCardLines, visWidth, widgetLines, widgetShimmerEnabled } from "../src/widget.ts";
 
@@ -293,7 +293,11 @@ describe("clear/cancel gates", () => {
 		council.final = { kind: "council", runId: council.id, initial: [{ member: "seat1", data: { recommendation: "ok" } }] };
 		council.phase = "done";
 		expect(persistRunDump(council)).toBe(join(dir, "council-runs.jsonl"));
-		expect(historyText("council", council.id)).toContain("Testing");
+		const replay = historyReplayText(readRunDumps("council")[0]!);
+		expect(replay).toContain("Testing");
+		expect(replay).toContain("ok");
+		expect(replay).not.toContain('"recommendation"');
+		expect(kickoffCardLines({ kind: "council", id: council.id, temporary: true, question: "Testing", seats: ["A"] }).join("\n")).toContain(`Council · ${council.id}`);
 		const arena = makeRun(state, "arena", "Implement", selected, { temporary: true, arenaProfile: "rust", judgeModel: "p/j" });
 		arena.phase = "done";
 		expect(persistRunDump(arena)).toBe(join(dir, "arena-runs.jsonl"));

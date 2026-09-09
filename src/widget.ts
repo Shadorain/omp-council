@@ -320,3 +320,48 @@ export const kickoffRenderer: MessageRenderer<KickoffDetails> = (message, _optio
 	};
 };
 
+export interface HistoryDetails {
+	id: string;
+	kind: "council" | "arena";
+}
+
+export function wrapLines(text: string, width: number): string[] {
+	const w = Math.max(20, width);
+	const out: string[] = [];
+	for (const raw of text.split("\n")) {
+		if (!raw) {
+			out.push("");
+			continue;
+		}
+		let rest = raw;
+		while (rest.length > w) {
+			let cut = rest.lastIndexOf(" ", w);
+			if (cut < Math.floor(w / 2)) cut = w;
+			out.push(rest.slice(0, cut).trimEnd());
+			rest = rest.slice(cut).trimStart();
+		}
+		if (rest) out.push(rest);
+	}
+	return out;
+}
+
+export const historyRenderer: MessageRenderer<HistoryDetails> = (message, _options, theme) => {
+	const details = message.details;
+	if (!details) return undefined;
+	const body = typeof message.content === "string" ? message.content : "";
+	return {
+		render(width: number) {
+			return [
+				"",
+				chatBannerLine(details.kind, details.id, width, {
+					fg: (tone, text) => theme.fg(tone === "accent" ? "accent" : "muted", text),
+					bold: (text) => theme.bold(text),
+				}),
+				"",
+				...wrapLines(body, width),
+				"",
+			];
+		},
+	};
+};
+

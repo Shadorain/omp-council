@@ -85,6 +85,8 @@ Shared: `status`, `cancel`, `history`, `clear`, `setup`, `config`, `help`.
 /arena history A3
 ```
 
+Bare `history` lists the last 10. Tab after `history` completes run ids; the description is the original prompt. Picking an id posts a full-width `Council · C14` / `Arena · A3` banner plus the seats' recommendations as chat text, not JSON.
+
 `/council test` after setup runs the saved seats with prompt `test`. Unresolved tokens are the question. `--` still forces an explicit prompt.
 
 Picker: type to filter, Space toggles, Enter submits.
@@ -96,7 +98,7 @@ Last N runs, newest first:
 - `~/.omp/agent/council-runs.jsonl`
 - `~/.omp/agent/arena-runs.jsonl`
 
-Set the caps in `council.json`. Default 20, max 200, `0` empties that file. `/council setup` keeps these fields. `--tmp` still records. Arena diffs stay on disk; `history A3` strips `diff` so the notify stays readable.
+Set the caps in `council.json`. Default 20, max 200, `0` empties that file. `/council setup` keeps these fields. `--tmp` still records. Arena diffs stay on disk; replay omits them.
 
 ## Config
 

@@ -368,30 +368,91 @@ function summarizeDump(item: RunDump): string {
 	return `${item.id}${item.temporary ? " tmp" : ""} ${item.kind} ${detail} • ${models} • ${when}\n  ${q}`;
 }
 
-function compactDump(row: RunDump): unknown {
-	const walk = (value: unknown): unknown => {
-		if (!value || typeof value !== "object") return value;
-		if (Array.isArray(value)) return value.map(walk);
-		const out: Record<string, unknown> = {};
-		for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-			if (key === "diff") continue;
-			out[key] = walk(child);
-		}
-		return out;
-	};
-	return walk(row);
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+	return value as Record<string, unknown>;
 }
 
-export function historyText(kind: "council" | "arena", id?: string): string {
+function stringLines(value: unknown): string[] {
+	if (typeof value === "string" && value.trim()) return [value.trim()];
+	if (!Array.isArray(value)) return [];
+	return value
+		.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+		.map((item) => item.trim());
+}
+
+function formatOpinion(label: string, item: unknown): string {
+	const rec = asRecord(item);
+	if (!rec) return label;
+	const bits = [label];
+	if (rec.error) bits.push(String(rec.error));
+	const data = asRecord(rec.data);
+	if (data) {
+		if (typeof data.recommendation === "string") bits.push(data.recommendation);
+		for (const line of stringLines(data.reasoning)) bits.push(`- ${line}`);
+		if (typeof data.confidence === "number") bits.push(`confidence ${data.confidence}`);
+	}
+	return bits.join("\n");
+}
+
+export function historyReplayText(row: RunDump): string {
+	const detail = row.kind === "arena" ? row.arenaProfile : `${row.mode ?? ""}/${row.rolePreset ?? ""}`.replace(/^\/|\/$/g, "");
+	const seats = row.participants.map((p) => p.label).join(", ");
+	const when = new Date(row.finishedAt).toLocaleString();
+	const head = [row.temporary ? "tmp" : undefined, detail || undefined, seats || undefined, when].filter(Boolean).join(" · ");
+	const parts = [head, "", row.question.replace(/\s+/g, " ").trim()];
+	const final = asRecord(row.final);
+	if (!final) {
+		if (row.statusMessage || row.phase) parts.push("", String(row.statusMessage ?? row.phase));
+		return parts.join("\n");
+	}
+	if (row.kind === "arena" || final.kind === "arena") {
+		const judgement = asRecord(final.judgement);
+		if (judgement) {
+			const winner = typeof judgement.winner === "string" ? judgement.winner : "?";
+			const conf = typeof judgement.confidence === "number" ? ` · ${judgement.confidence}` : "";
+			parts.push("", `Winner ${winner}${conf}`);
+			if (typeof judgement.decision === "string") parts.push(judgement.decision);
+		}
+		const reveal = asRecord(final.reveal);
+		const candidates = Array.isArray(final.candidates) ? final.candidates : [];
+		for (const item of candidates) {
+			const cand = asRecord(item);
+			if (!cand) continue;
+			const letter = String(cand.candidate ?? "?");
+			const who = asRecord(reveal?.[letter]);
+			const name = typeof who?.label === "string" ? ` · ${who.label}` : "";
+			parts.push("", `Candidate ${letter}${name}`);
+			if (cand.error) parts.push(String(cand.error));
+			const data = asRecord(cand.data);
+			if (typeof data?.summary === "string") parts.push(data.summary);
+			if (typeof data?.approach === "string" && data.approach !== data.summary) parts.push(data.approach);
+		}
+		return parts.join("\n");
+	}
+	const round = Array.isArray(final.finalReview)
+		? final.finalReview
+		: Array.isArray(final.rebuttals)
+			? final.rebuttals
+			: Array.isArray(final.initial)
+				? final.initial
+				: [];
+	const named = Array.isArray(final.participants) ? final.participants : [];
+	for (const item of round) {
+		const rec = asRecord(item);
+		const key = rec && typeof rec.member === "string" ? rec.member : "";
+		const seat = named.map(asRecord).find((p) => p?.key === key);
+		const label = typeof seat?.label === "string" ? seat.label : key || "Seat";
+		parts.push("", formatOpinion(label, item));
+	}
+	return parts.join("\n");
+}
+
+export function historyText(kind: "council" | "arena"): string {
 	const path = runDumpsPath(kind);
 	const cap = retainLimit(kind);
 	const rows = readRunDumps(kind);
 	const label = kind === "arena" ? "Arena" : "Council";
-	if (id) {
-		const row = rows.find((item) => item.id.toLowerCase() === id.toLowerCase());
-		if (!row) return `No retained ${label} run ${id}. Last ${cap} live in ${path}`;
-		return JSON.stringify(compactDump(row), null, 2).slice(0, 6000);
-	}
 	if (rows.length === 0) return `No retained ${label} runs.\nLast ${cap} live in ${path}`;
 	return `${rows.slice(0, 10).map(summarizeDump).join("\n")}\n\n${path}  (cap ${cap})`;
 }

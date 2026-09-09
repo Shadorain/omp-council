@@ -215,6 +215,7 @@ export const ROLE_LENSES: Record<RolePreset, string[]> = {
 export const TERMINAL_PHASES = new Set<RunPhase>(["done", "cancelled", "failed"]);
 export const STATE_ENTRY = "dev.omp.council.run";
 export const KICKOFF_TYPE = "omp-council.kickoff";
+export const HISTORY_TYPE = "omp-council.history";
 
 export const WIDGET_KEY = "omp-council";
 export const STATUS_KEY = "omp-council";

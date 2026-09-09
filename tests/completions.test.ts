@@ -1,6 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { arenaArgumentCompletions, councilArgumentCompletions } from "../src/completions.ts";
-
 describe("councilArgumentCompletions", () => {
 	test("lists optional question placeholder before flags and a single help", () => {
 		const items = councilArgumentCompletions("");
@@ -68,10 +70,30 @@ describe("councilArgumentCompletions", () => {
 		expect(items.map((item) => item.value)).toEqual(["cancel"]);
 		expect(items[0]?.description.toLowerCase()).toContain("abort");
 	});
-
 	test("a completed lifecycle command has no further suggestions", () => {
 		expect(councilArgumentCompletions("cancel ")).toEqual([]);
 		expect(councilArgumentCompletions("status extra")).toEqual([]);
+	});
+});
+
+describe("history completions", () => {
+	afterEach(() => {
+		delete process.env.OMP_AGENT_DIR;
+		delete process.env.PI_CODING_AGENT_DIR;
+	});
+
+	test("history ids use the original prompt as description", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "council-hist-"));
+		process.env.OMP_AGENT_DIR = dir;
+		await writeFile(
+			join(dir, "council-runs.jsonl"),
+			`${JSON.stringify({ id: "C14", kind: "council", question: "keep the temp-agent pin?", participants: [], finishedAt: 1 })}\n`,
+		);
+		const items = councilArgumentCompletions("history ");
+		expect(items.map((item) => item.value)).toEqual(["history C14"]);
+		expect(items[0]?.label).toBe("C14");
+		expect(items[0]?.description).toBe("keep the temp-agent pin?");
+		expect(councilArgumentCompletions("history C1").map((item) => item.label)).toEqual(["C14"]);
 	});
 });
 

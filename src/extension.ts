@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Text } from "@oh-my-pi/pi-tui";
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
-import { configSummary, readConfig } from "./config.ts";
+import { configSummary, readConfig, retainLimit } from "./config.ts";
 import { currentModelSelector, exactSelector } from "./models.ts";
 import {
 	applyChairSystemPrompt,
@@ -23,7 +23,7 @@ import {
 	councilArgumentCompletions,
 } from "./completions.ts";
 import { parseArenaSyntax, parseCouncilSyntax } from "./parse.ts";
-import { councilConfigPath } from "./paths.ts";
+import { councilConfigPath, runDumpsPath } from "./paths.ts";
 import { preselectedFromTokens, resolveParticipantTokens, selectedFromConfig, splitBarePrompt } from "./participants.ts";
 import {
 	cleanupRuntimeAgents,
@@ -41,13 +41,16 @@ import {
 	createRuntimeState,
 	ensureNoActiveRun,
 	freezeRunClock,
+	historyReplayText,
 	historyText,
 	hydrateUsageFromEval,
 	makeRun,
 	markMembers,
+	readRunDumps,
 	sessionKeyOf,
 } from "./state.ts";
 import {
+	HISTORY_TYPE,
 	MIN_PARTICIPANTS,
 	STATE_ENTRY,
 	STATUS_KEY,
@@ -76,7 +79,7 @@ import {
 	selectorsToParticipants,
 	setupRegistry,
 } from "./ui.ts";
-import { isCouncilCancel, kickoffRenderer, participantLabels, renderWidget, runLabel } from "./widget.ts";
+import { historyRenderer, isCouncilCancel, kickoffRenderer, participantLabels, renderWidget, runLabel } from "./widget.ts";
 
 
 function usageText(): string {
@@ -608,7 +611,26 @@ async function handleSharedManagement(
 	}
 	if (raw === "history" || raw.startsWith("history ")) {
 		const id = raw.slice("history".length).trim();
-		ctx.ui.notify(historyText(kind, id || undefined), "info");
+		if (!id) {
+			ctx.ui.notify(historyText(kind), "info");
+			return true;
+		}
+		const row = readRunDumps(kind).find((item) => item.id.toLowerCase() === id.toLowerCase());
+		const label = kind === "arena" ? "Arena" : "Council";
+		if (!row) {
+			ctx.ui.notify(`No retained ${label} run ${id}. Last ${retainLimit(kind)} live in ${runDumpsPath(kind)}`, "warning");
+			return true;
+		}
+		pi.sendMessage(
+			{
+				customType: HISTORY_TYPE,
+				content: historyReplayText(row),
+				display: true,
+				attribution: "agent",
+				details: { id: row.id, kind: row.kind },
+			},
+			{ triggerTurn: false },
+		);
 		return true;
 	}
 	if (raw === "clear") {
@@ -641,6 +663,7 @@ export default function councilExtension(pi: ExtensionAPI): void {
 
 	pi.setLabel("Shadow Council");
 	pi.registerMessageRenderer(KICKOFF_TYPE, kickoffRenderer);
+	pi.registerMessageRenderer(HISTORY_TYPE, historyRenderer);
 	pi.registerMessageRenderer("session-stop-continuation", (message) => {
 		const text = typeof message.content === "string" ? message.content : "";
 		if (!isChairPlumbing(text)) return undefined;
